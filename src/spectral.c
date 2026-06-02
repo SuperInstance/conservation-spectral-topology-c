@@ -84,7 +84,9 @@ static void spmv(const SparseMatrix *A, const double *x, double *y)
     }
 }
 
-/* ---- Power iteration with proper deflation ---- */
+/* ---- Power iteration with Hotelling deflation ---- */
+/* Deflates A itself: w = A*v - sum_prev[ lambda_prev * (v_prev^T v) v_prev ]
+   This implements A_new = A - lambda * v v^T in the matrix-vector product. */
 int power_iteration(const SparseMatrix *A, int k,
                     double *eigenvalues, double *eigenvectors,
                     int max_iter, double tol)
@@ -123,16 +125,18 @@ int power_iteration(const SparseMatrix *A, int k,
         for (int iter = 0; iter < max_iter; iter++) {
             spmv(A, v, w);
 
-            /* Deflate: remove projections onto previous eigenvectors */
+            /* Hotelling deflation: subtract A_prev contributions.
+               w = A*v - sum_prev[ lambda_prev * (v_prev . v) * v_prev ]
+               This is equivalent to (A - sum lambda_i v_i v_i^T) * v */
             for (int prev = 0; prev < eig; prev++) {
                 double dot = 0.0;
                 for (int i = 0; i < n; i++)
-                    dot += w[i] * eigenvectors[prev * n + i];
+                    dot += v[i] * eigenvectors[prev * n + i];
                 for (int i = 0; i < n; i++)
-                    w[i] -= dot * eigenvectors[prev * n + i];
+                    w[i] -= eigenvalues[prev] * dot * eigenvectors[prev * n + i];
             }
 
-            /* Rayleigh quotient */
+            /* Rayleigh quotient on deflated matrix */
             lambda = 0.0;
             for (int i = 0; i < n; i++) lambda += w[i] * v[i];
 
@@ -141,9 +145,8 @@ int power_iteration(const SparseMatrix *A, int k,
             for (int i = 0; i < n; i++) norm += w[i] * w[i];
             norm = sqrt(norm);
             if (norm < 1e-15) {
-                /* Eigenvalue is 0, w collapsed — set v to arbitrary orthonormal */
+                /* Eigenvalue is 0, w collapsed — find orthonormal vector */
                 for (int i = 0; i < n; i++) w[i] = 0.0;
-                /* Find a component orthogonal to previous eigenvectors */
                 for (int i = 0; i < n; i++) {
                     w[i] = 1.0;
                     for (int prev = 0; prev < eig; prev++) {
@@ -182,6 +185,13 @@ int power_iteration(const SparseMatrix *A, int k,
     return 0;
 }
 
+/* Comparator for qsort on doubles */
+static int cmp_double(const void *a, const void *b)
+{
+    double da = *(const double *)a, db = *(const double *)b;
+    return (da > db) - (da < db);
+}
+
 /* ---- Spectral gap ---- */
 double spectral_gap(const double *eigenvalues, int n)
 {
@@ -189,9 +199,7 @@ double spectral_gap(const double *eigenvalues, int n)
 
     double *sorted = (double *)malloc(n * sizeof(double));
     memcpy(sorted, eigenvalues, n * sizeof(double));
-    for (int i = 0; i < n - 1; i++)
-        for (int j = i + 1; j < n; j++)
-            if (sorted[j] < sorted[i]) { double t = sorted[i]; sorted[i] = sorted[j]; sorted[j] = t; }
+    qsort(sorted, n, sizeof(double), cmp_double);
 
     double gap = sorted[1] - sorted[0];
     free(sorted);
@@ -199,21 +207,33 @@ double spectral_gap(const double *eigenvalues, int n)
 }
 
 /* ---- Cheeger constant from Fiedler vector ---- */
+/* Proper definition: sweep cut on sorted Fiedler values.
+   Sorts vertices by Fiedler value, tries every partition point k,
+   approximates edge boundary by gap at cut scaled by size.
+   Returns h = min_k (gap_k * n / min(k, n-k)). */
 double cheeger_constant(const double *fiedler, int n)
 {
     if (n < 2) return 0.0;
 
-    double norm_sq = 0.0;
-    for (int i = 0; i < n; i++) norm_sq += fiedler[i] * fiedler[i];
-    if (norm_sq < 1e-15) return 0.0;
-    double norm = sqrt(norm_sq);
+    /* Sort Fiedler values */
+    double *sv = (double *)malloc(n * sizeof(double));
+    memcpy(sv, fiedler, n * sizeof(double));
+    qsort(sv, n, sizeof(double), cmp_double);
 
-    int pos_count = 0;
-    for (int i = 0; i < n; i++)
-        if (fiedler[i] >= 0) pos_count++;
-    int neg_count = n - pos_count;
-    double min_side = (pos_count < neg_count) ? (double)pos_count : (double)neg_count;
-    if (min_side == 0) return 0.0;
+    /* Check for trivially constant Fiedler vector */
+    double range = sv[n - 1] - sv[0];
+    if (range < 1e-15) { free(sv); return 0.0; }
 
-    return norm / (2.0 * min_side);
+    /* Sweep cut: find partition minimizing conductance estimate */
+    double best = DBL_MAX;
+    for (int k = 1; k < n; k++) {
+        int min_side = k < (n - k) ? k : (n - k);
+        /* Edge boundary approximated by gap at cut point */
+        double gap = sv[k] - sv[k - 1];
+        double h = gap * (double)n / (double)min_side;
+        if (h < best) best = h;
+    }
+
+    free(sv);
+    return best;
 }

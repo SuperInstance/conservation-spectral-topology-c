@@ -11,6 +11,23 @@ static int cmp_int(const void *a, const void *b)
     return *(const int *)a - *(const int *)b;
 }
 
+/* Comparators for qsort in persistence */
+typedef struct { int idx; double val; } idx_val;
+
+static int cmp_idx_val(const void *a, const void *b)
+{
+    double da = ((const idx_val *)a)->val, db = ((const idx_val *)b)->val;
+    return (da > db) - (da < db);
+}
+
+typedef struct { size_t idx; double filt; } edge_filt;
+
+static int cmp_edge_filt(const void *a, const void *b)
+{
+    double da = ((const edge_filt *)a)->filt, db = ((const edge_filt *)b)->filt;
+    return (da > db) - (da < db);
+}
+
 /* Union-Find for connected components */
 static void uf_init(int *parent, int n)
 {
@@ -36,7 +53,16 @@ static void uf_union(int *parent, int a, int b)
 static int mod2_rank(int rows, int cols, const int *matrix)
 {
     if (rows == 0 || cols == 0) return 0;
-    int *m = (int *)malloc(rows * cols * sizeof(int));
+    /* Overflow check for allocation size */
+    size_t alloc_size;
+    if (rows > 0 && cols > 0 && (size_t)rows <= SIZE_MAX / (size_t)cols) {
+        alloc_size = (size_t)rows * (size_t)cols;
+        if (alloc_size > SIZE_MAX / sizeof(int)) return -1;
+    } else {
+        return -1;
+    }
+    int *m = (int *)malloc(alloc_size * sizeof(int));
+    if (!m) return -1;
     memcpy(m, matrix, rows * cols * sizeof(int));
 
     int rank = 0;
@@ -247,20 +273,12 @@ PersistenceDiagram persistence_via_filtration(const SimplicialComplex *sc,
     if (!sc || !vertex_values || num_values == 0) return pd;
 
     /* Create filtration: sort vertices by value */
+    idx_val *iv = (idx_val *)malloc(num_values * sizeof(idx_val));
+    for (size_t i = 0; i < num_values; i++) { iv[i].idx = (int)i; iv[i].val = vertex_values[i]; }
+    qsort(iv, num_values, sizeof(idx_val), cmp_idx_val);
     int *order = (int *)malloc(num_values * sizeof(int));
-    for (size_t i = 0; i < num_values; i++) order[(int)i] = (int)i;
-
-    /* Simple insertion sort */
-    for (size_t i = 1; i < num_values; i++) {
-        int key = order[i];
-        double kv = vertex_values[key];
-        int j = (int)i - 1;
-        while (j >= 0 && vertex_values[order[j]] > kv) {
-            order[j+1] = order[j];
-            j--;
-        }
-        order[j+1] = key;
-    }
+    for (size_t i = 0; i < num_values; i++) order[i] = iv[i].idx;
+    free(iv);
 
     /* Allocate max possible pairs */
     size_t max_pairs = num_values + sc->num_edges;
@@ -278,7 +296,6 @@ PersistenceDiagram persistence_via_filtration(const SimplicialComplex *sc,
 
     /* Process vertices in filtration order, then edges */
     /* Sort edges by max birth time of endpoints */
-    typedef struct { size_t idx; double filt; } edge_filt;
     edge_filt *ef = (edge_filt *)malloc(sc->num_edges * sizeof(edge_filt));
     for (size_t e = 0; e < sc->num_edges; e++) {
         int a = sc->edges[2*e], b = sc->edges[2*e+1];
@@ -287,12 +304,7 @@ PersistenceDiagram persistence_via_filtration(const SimplicialComplex *sc,
         ef[e].idx = e;
         ef[e].filt = fa > fb ? fa : fb;
     }
-    for (size_t i = 1; i < sc->num_edges; i++) {
-        edge_filt key = ef[i];
-        int j = (int)i - 1;
-        while (j >= 0 && ef[j].filt > key.filt) { ef[j+1] = ef[j]; j--; }
-        ef[j+1] = key;
-    }
+    qsort(ef, sc->num_edges, sizeof(edge_filt), cmp_edge_filt);
 
     /* Track which vertices have appeared */
     int *appeared = (int *)calloc(sc->num_vertices, sizeof(int));

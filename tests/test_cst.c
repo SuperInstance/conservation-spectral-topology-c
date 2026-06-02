@@ -115,9 +115,9 @@ TEST(betti_triangle)
     /* Filled triangle = disk: B0=1, B1=0, B2=0 */
     SimplicialComplex sc = make_triangle(0, 1, 2);
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5); /* filled triangle, no loop */
-    ASSERT_EQ_DBL(bn.b2, 0, 0.5);
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01); /* filled triangle, no loop */
+    ASSERT_EQ_DBL(bn.b2, 0, 0.01);
     simplicial_complex_free(&sc);
 }
 
@@ -139,8 +139,8 @@ TEST(betti_two_triangles_shared_edge)
     sc.triangles[0].v[0]=0; sc.triangles[0].v[1]=1; sc.triangles[0].v[2]=2;
     sc.triangles[1].v[0]=1; sc.triangles[1].v[1]=2; sc.triangles[1].v[2]=3;
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5); /* filled disk, no loop */
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01); /* filled disk, no loop */
     simplicial_complex_free(&sc);
 }
 
@@ -153,8 +153,8 @@ TEST(betti_single_edge)
     sc.edges = (int *)malloc(2 * sizeof(int));
     sc.edges[0] = 0; sc.edges[1] = 1;
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5);
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01);
     simplicial_complex_free(&sc);
 }
 
@@ -169,8 +169,8 @@ TEST(betti_disconnected)
     sc.edges[0]=0; sc.edges[1]=1;
     sc.edges[2]=2; sc.edges[3]=3;
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 2, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5);
+    ASSERT_EQ_DBL(bn.b0, 2, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01);
     simplicial_complex_free(&sc);
 }
 
@@ -192,9 +192,9 @@ TEST(betti_tetrahedron)
     sc.tetrahedra[0].v[0]=0; sc.tetrahedra[0].v[1]=1; sc.tetrahedra[0].v[2]=2; sc.tetrahedra[0].v[3]=3;
 
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);   /* connected */
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5);   /* no loops */
-    ASSERT_EQ_DBL(bn.b2, 0, 0.5);   /* no voids (filled by tetrahedron) */
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);   /* connected */
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01);   /* no loops */
+    ASSERT_EQ_DBL(bn.b2, 0, 0.01);   /* no voids (filled by tetrahedron) */
     simplicial_complex_free(&sc);
 }
 
@@ -222,9 +222,9 @@ TEST(betti_sphere_8_triangle)
     for (int i = 0; i < 8; i++) { sc.triangles[i].v[0]=tris[i][0]; sc.triangles[i].v[1]=tris[i][1]; sc.triangles[i].v[2]=tris[i][2]; }
 
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5);  /* sphere has no tunnels */
-    ASSERT_EQ_DBL(bn.b2, 1, 0.5);  /* sphere has 1 void */
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01);  /* sphere has no tunnels */
+    ASSERT_EQ_DBL(bn.b2, 1, 0.01);  /* sphere has 1 void */
     simplicial_complex_free(&sc);
 }
 
@@ -241,8 +241,8 @@ TEST(betti_cycle_graph)
     sc.edges[4]=2; sc.edges[5]=3;
     sc.edges[6]=3; sc.edges[7]=0;
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 1, 0.5); /* one loop */
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 1, 0.01); /* one loop */
     simplicial_complex_free(&sc);
 }
 
@@ -258,8 +258,8 @@ TEST(betti_triangle_unfilled)
     sc.edges[2]=1; sc.edges[3]=2;
     sc.edges[4]=2; sc.edges[5]=0;
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 1, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 1, 0.5); /* unfilled triangle = 1 loop */
+    ASSERT_EQ_DBL(bn.b0, 1, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 1, 0.01); /* unfilled triangle = 1 loop */
     simplicial_complex_free(&sc);
 }
 
@@ -340,9 +340,9 @@ TEST(laplacian_eigenvalues_path)
             if (evals[j] < evals[i]) { double t = evals[i]; evals[i] = evals[j]; evals[j] = t; }
 
     /* Known: eigenvalues of path-3 are 0, 1, 3 */
-    ASSERT_EQ_DBL(evals[0], 0.0, 0.5);
-    ASSERT_EQ_DBL(evals[1], 1.0, 0.5);
-    ASSERT_EQ_DBL(evals[2], 3.0, 0.5);
+    ASSERT_EQ_DBL(evals[0], 0.0, 0.01);
+    ASSERT_EQ_DBL(evals[1], 1.0, 0.01);
+    ASSERT_EQ_DBL(evals[2], 3.0, 0.01);
 
     sparse_matrix_free(&L);
     simplicial_complex_free(&sc);
@@ -378,8 +378,8 @@ TEST(laplacian_complete_graph)
             if (evals[j] < evals[i]) { double t = evals[i]; evals[i] = evals[j]; evals[j] = t; }
 
     /* K3 eigenvalues: 0, 3, 3 */
-    ASSERT_EQ_DBL(evals[0], 0.0, 0.5);
-    ASSERT_EQ_DBL(evals[1], 3.0, 0.5);
+    ASSERT_EQ_DBL(evals[0], 0.0, 0.01);
+    ASSERT_EQ_DBL(evals[1], 3.0, 0.01);
 
     sparse_matrix_free(&L);
     simplicial_complex_free(&sc);
@@ -391,6 +391,41 @@ TEST(cheeger_nonzero)
     double fiedler[] = {1.0, 0.0, -1.0};
     double h = cheeger_constant(fiedler, 3);
     ASSERT_TRUE(h > 0.0);
+}
+
+TEST(degenerate_eigenvalues)
+{
+    /* K4: complete graph on 4 vertices — eigenvalues 0, 4, 4, 4 (degenerate) */
+    SimplicialComplex sc;
+    memset(&sc, 0, sizeof(sc));
+    sc.num_vertices = 4;
+    sc.num_edges = 6;
+    sc.edges = (int *)malloc(12 * sizeof(int));
+    int e[][2] = {{0,1},{0,2},{0,3},{1,2},{1,3},{2,3}};
+    for (int i = 0; i < 6; i++) { sc.edges[2*i]=e[i][0]; sc.edges[2*i+1]=e[i][1]; }
+    SparseMatrix L = laplacian_from_complex(&sc);
+
+    double evals[4];
+    double evecs[16];
+    int rc = power_iteration(&L, 4, evals, evecs, 2000, 1e-10);
+    ASSERT_EQ_DBL(rc, 0, 0.1);
+
+    /* Sort eigenvalues */
+    for (int i = 0; i < 3; i++)
+        for (int j = i+1; j < 4; j++)
+            if (evals[j] < evals[i]) { double t = evals[i]; evals[i] = evals[j]; evals[j] = t; }
+
+    /* K4 eigenvalues: 0, 4, 4, 4 */
+    ASSERT_EQ_DBL(evals[0], 0.0, 0.01);
+    ASSERT_EQ_DBL(evals[1], 4.0, 0.5); /* degenerate, may be less precise */
+    ASSERT_EQ_DBL(evals[3], 4.0, 0.5);
+
+    /* Spectral gap should be 4.0 */
+    double gap = spectral_gap(evals, 4);
+    ASSERT_EQ_DBL(gap, 4.0, 0.5);
+
+    sparse_matrix_free(&L);
+    simplicial_complex_free(&sc);
 }
 
 /* ================================================================== */
@@ -510,8 +545,8 @@ TEST(empty_system)
     SimplicialComplex sc;
     memset(&sc, 0, sizeof(sc));
     BettiNumbers bn = compute_betti_numbers(&sc);
-    ASSERT_EQ_DBL(bn.b0, 0, 0.5);
-    ASSERT_EQ_DBL(bn.b1, 0, 0.5);
+    ASSERT_EQ_DBL(bn.b0, 0, 0.01);
+    ASSERT_EQ_DBL(bn.b1, 0, 0.01);
 }
 
 TEST(single_vertex_laplacian)
@@ -608,6 +643,7 @@ int main(void)
     RUN(spectral_gap_single);
     RUN(laplacian_complete_graph);
     RUN(cheeger_nonzero);
+    RUN(degenerate_eigenvalues);
 
     printf("\n[Unified CST]\n");
     RUN(cst_verify_good);
